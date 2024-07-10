@@ -1,0 +1,5 @@
+jpss_samples/
+shapefiles/
+*.h5
+*.log
+.idea/

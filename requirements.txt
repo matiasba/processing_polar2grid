@@ -1,0 +1,4 @@
+pandas~=2.2.2
+boto3~=1.34.136
+botocore~=1.34.136
+polar2grid==3.0.2
