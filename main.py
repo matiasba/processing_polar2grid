@@ -13,18 +13,19 @@ s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
 
 samples_path = './jpss_samples'
 shapefiles_path = './shapefiles'
+output_file = 'result.tif'
 shapefiles_url = 'https://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.7.zip'
 bucket_name = "noaa-nesdis-n20-pds"
 target_data = "VIIRS-I1-SDR"
 target_data_geo = "VIIRS-IMG-GEO-TC"
 
-year = '2023'
-month = '09'
-day = '15'
+year = '2024'
+month = '02'
+day = '20'
 start_hour = '17'
-start_minute = '12'
+start_minute = '05'
 end_hour = '17'
-end_minute = '18'
+end_minute = '10'
 
 start_limiter = datetime(int(year), int(month), int(day), int(start_hour), int(start_minute), 0)
 end_limiter = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute), 0)
@@ -118,3 +119,15 @@ def update_shapefiles():
 download_data()
 download_data_geo()
 update_shapefiles()
+
+os.environ["USE_POLAR2GRID_DEFAULTS"] = "1"
+
+from polar2grid.glue import main as polar2grid
+
+polar2grid_args = ["-r", "viirs_sdr", "-w", "geotiff", "--output-filename", str(output_file), "-vvv", "-p", "i01", "-f", str(samples_path)]
+polar2grid(argv=polar2grid_args)
+
+#from polar2grid.add_coastlines import main as add_costlines
+#add_costlines_args = ["--shapes-dir", str(shapefiles_path), "--add-coastlines", "--add-grid", "--grid-D", "10.0", "10.0", "--grid-d", "10.0", "10.0", "--grid-text-size", "20", str(output_file)]
+#add_costlines(argv=add_costlines_args)
+

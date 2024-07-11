@@ -2,3 +2,6 @@ pandas~=2.2.2
 boto3~=1.34.136
 botocore~=1.34.136
 polar2grid==3.0.2
+aggdraw~=1.3.18
+pycoast~=1.7.1
+pydecorate~=0.4.0
