@@ -26,7 +26,7 @@ targets_data_geo = ["VIIRS-IMG-GEO-TC", "VIIRS-MOD-GEO-TC"]
 samples_path = './jpss_samples'
 shapefiles_path = './shapefiles'
 output_dir = './output'
-output_file = f'{bucket_name}-{year}-{month}-{day}-{start_hour}'
+output_file = f'{bucket_name}-{product}-{year}-{month}-{day}-{start_hour}'
 shapefiles_url = 'https://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.7.zip'
 
 start_limiter = datetime(int(year), int(month), int(day), int(start_hour), int(start_minute), 0)
