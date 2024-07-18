@@ -11,24 +11,36 @@ import zipfile
 s3 = boto3.resource('s3')
 s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
 
+year = '2023'
+month = '09'
+day = '15'
+start_hour = '17'
+start_minute = '13'
+end_hour = '17'
+end_minute = '17'
+bucket_name = "noaa-nesdis-n21-pds"
+product = "true_color"
+bands = ["M3", "M4", "M5"]
+targets_data_geo = ["VIIRS-IMG-GEO-TC", "VIIRS-MOD-GEO-TC"]
+
 samples_path = './jpss_samples'
 shapefiles_path = './shapefiles'
-output_file = 'result.tif'
+output_dir = './output'
+output_file = f'{bucket_name}-{year}-{month}-{day}-{start_hour}'
 shapefiles_url = 'https://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.7.zip'
-bucket_name = "noaa-nesdis-n20-pds"
-target_data = "VIIRS-I1-SDR"
-target_data_geo = "VIIRS-IMG-GEO-TC"
-
-year = '2024'
-month = '02'
-day = '20'
-start_hour = '17'
-start_minute = '05'
-end_hour = '17'
-end_minute = '10'
 
 start_limiter = datetime(int(year), int(month), int(day), int(start_hour), int(start_minute), 0)
 end_limiter = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute), 0)
+
+
+def clean_dir(target_dir):
+    folder = Path(target_dir)
+    for item in folder.rglob("*"):
+        try:
+            if item.is_file() and not item.name.startswith("."):
+                item.unlink()
+        except OSError as ose:
+            print(f"Failed to delete {item}. {ose}")
 
 
 def list_blobs(bucket, prefix):
@@ -68,32 +80,35 @@ def download_blob(bucket, source_blob_name, destination_file_name):
 
 
 def download_data():
-    results_data = list_blobs(bucket_name, f"{target_data}/{year}/{month}/{day}")
+    for band in bands:
+        print(f"Searching for band {band}...")
+        target_data = f"VIIRS-{band}-SDR"
+        results_data = list_blobs(bucket_name, f"{target_data}/{year}/{month}/{day}")
 
-    dfr = pd.DataFrame(results_data, columns=['Files'])
-    dfr['Date'] = dfr.Files.apply(parse_dates)
+        dfr = pd.DataFrame(results_data, columns=['Files'])
+        dfr['Date'] = dfr.Files.apply(parse_dates)
 
-    lets_get = dfr[(dfr.Date >= start_limiter) & (dfr.Date < end_limiter)].Files.to_list()
-    print('Filtered to:', len(lets_get))
-    print(lets_get)
+        lets_get = dfr[(dfr.Date >= start_limiter) & (dfr.Date < end_limiter)].Files.to_list()
+        print('Filtered to:', len(lets_get))
+        print(lets_get)
 
-    for file in lets_get:
-        file_name = file.rsplit('/', 1)[-1]
-        download_blob(bucket_name, file, f'{samples_path}/{file_name}')
+        for file in lets_get:
+            file_name = file.rsplit('/', 1)[-1]
+            download_blob(bucket_name, file, f'{samples_path}/{file_name}')
 
 
 def download_data_geo():
-    results_geo = list_blobs(bucket_name, f"{target_data_geo}/{year}/{month}/{day}/")
-    dfr_geo = pd.DataFrame(results_geo, columns=['Files'])
-    dfr_geo['Date'] = dfr_geo.Files.apply(parse_dates)
+    for target in targets_data_geo:
+        print(f"Searching for {target}...")
+        results_geo = list_blobs(bucket_name, f"{target}/{year}/{month}/{day}/")
+        dfr_geo = pd.DataFrame(results_geo, columns=['Files'])
+        dfr_geo['Date'] = dfr_geo.Files.apply(parse_dates)
 
-    lets_get_geo = dfr_geo[(dfr_geo.Date >= start_limiter) & (dfr_geo.Date < end_limiter)].Files.to_list()
-    print('Filtered to:', len(lets_get_geo))
-    print(lets_get_geo)
-
-    for file in lets_get_geo:
-        file_name = file.rsplit('/', 1)[-1]
-        download_blob(bucket_name, file, f'{samples_path}/{file_name}')
+        lets_get_geo = dfr_geo[(dfr_geo.Date >= start_limiter) & (dfr_geo.Date < end_limiter)].Files.to_list()
+        print('Filtered to:', len(lets_get_geo))
+        for file in lets_get_geo:
+            file_name = file.rsplit('/', 1)[-1]
+            download_blob(bucket_name, file, f'{samples_path}/{file_name}')
 
 
 def update_shapefiles():
@@ -116,6 +131,7 @@ def update_shapefiles():
         print("Shapefiles up to date")
 
 
+#clean_dir(samples_path)
 download_data()
 download_data_geo()
 update_shapefiles()
@@ -124,10 +140,10 @@ os.environ["USE_POLAR2GRID_DEFAULTS"] = "1"
 
 from polar2grid.glue import main as polar2grid
 
-polar2grid_args = ["-r", "viirs_sdr", "-w", "geotiff", "--output-filename", str(output_file), "-vvv", "-p", "i01", "-f", str(samples_path)]
+polar2grid_args = ["-r", "viirs_sdr", "-w", "geotiff", "--output-filename", f"{output_dir}/{output_file}.tif", "-vvv", "-p", product, "-f", str(samples_path)]
 polar2grid(argv=polar2grid_args)
 
 #from polar2grid.add_coastlines import main as add_costlines
-#add_costlines_args = ["--shapes-dir", str(shapefiles_path), "--add-coastlines", "--add-grid", "--grid-D", "10.0", "10.0", "--grid-d", "10.0", "10.0", "--grid-text-size", "20", str(output_file)]
-#add_costlines(argv=add_costlines_args)
 
+#add_costlines_args = ["--shapes-dir", str(shapefiles_path), "--add-coastlines", "--add-grid", "--grid-D", "10.0","10.0", "--grid-d", "10.0", "10.0", "--grid-text-size", "20", f"{output_dir}/{output_file}.tif"]
+#add_costlines(argv=add_costlines_args)

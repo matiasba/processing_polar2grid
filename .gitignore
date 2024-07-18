@@ -1,5 +1,6 @@
 jpss_samples/*
 shapefiles/*
+output/*
 *.h5
 *.log
 .idea
